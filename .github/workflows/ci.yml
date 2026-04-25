@@ -12,34 +12,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Récupération du code ──────────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Requis par SonarCloud pour l'analyse git blame
+          fetch-depth: 0
 
-      # ── 2. Installation de Node.js ───────────────────────────────────────────
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          # Suppression du cache npm qui posait problème
 
-      # ── 3. Installation des dépendances ─────────────────────────────────────
       - name: Install dependencies
-        run: npm ci
+        run: npm install  # Utilisation de install au lieu de ci
 
-      # ── 4. Linting ESLint (complexité max = 5) ───────────────────────────────
-      # ⚠️  Cette étape ÉCHOUE en Étape 3 (certScore.js trop complexe → V(G) > 5)
-      # Elle passe en Étape 4 après refactoring
       - name: Run Linter (ESLint — complexity check)
         run: npm run lint
 
-      # ── 5. Tests unitaires + rapport de couverture ───────────────────────────
       - name: Run Tests (Jest + Coverage)
         run: npm test
 
-      # ── 6. Envoi du rapport à SonarCloud ─────────────────────────────────────
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
         env:
