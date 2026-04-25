@@ -1,5 +1,5 @@
 const express = require('express');
-const { calculateCertScore } = require('./src/certScore');
+const { calculateCertScore } = require('./src/certScore.refactored');
 
 const app = express();
 app.use(express.json());
