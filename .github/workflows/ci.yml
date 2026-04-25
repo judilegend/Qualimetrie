@@ -7,8 +7,8 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build-and-test:
-    name: Build Docker, Lint & Test
+  quality:
+    name: Lint, Test & SonarCloud
     runs-on: ubuntu-latest
 
     steps:
@@ -16,31 +16,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Requis par SonarCloud pour l'analyse de blame git
+          fetch-depth: 0  # Requis par SonarCloud pour l'analyse git blame
 
-      # ── 2. Build de l'image Docker ───────────────────────────────────────────
-      - name: Build Docker image
-        run: docker build -t qualimetrie-app .
+      # ── 2. Installation de Node.js ───────────────────────────────────────────
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
 
-      # ── 3. Linting ESLint via Docker (complexity check) ──────────────────────
-      - name: Run Linter (ESLint — Complexité max = 5)
-        run: docker run --rm qualimetrie-app npx eslint src/ app.js
-        # ⚠️  Cette étape DOIT échouer en Étape 1 (certScore.js trop complexe)
-        # Elle passe en Étape 4 (certScore.refactored.js est propre)
+      # ── 3. Installation des dépendances ─────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
 
-      # ── 4. Tests unitaires + rapport de couverture via Docker ─────────────────
+      # ── 4. Linting ESLint (complexité max = 5) ───────────────────────────────
+      # ⚠️  Cette étape ÉCHOUE en Étape 3 (certScore.js trop complexe → V(G) > 5)
+      # Elle passe en Étape 4 après refactoring
+      - name: Run Linter (ESLint — complexity check)
+        run: npm run lint
+
+      # ── 5. Tests unitaires + rapport de couverture ───────────────────────────
       - name: Run Tests (Jest + Coverage)
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/coverage:/app/coverage \
-            qualimetrie-app \
-            npx jest --coverage --coverageReporters=lcov --coverageReporters=text
+        run: npm test
 
-      # ── 5. Envoi du rapport à SonarCloud ─────────────────────────────────────
+      # ── 6. Envoi du rapport à SonarCloud ─────────────────────────────────────
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # Le SONAR_TOKEN doit être ajouté dans :
-        # GitHub repo → Settings → Secrets and variables → Actions → New repository secret
